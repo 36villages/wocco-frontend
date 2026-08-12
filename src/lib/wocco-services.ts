@@ -76,6 +76,7 @@ export const WOCCO_SERVICES: WoccoService[] = [
   { id: "garbage-disposal", name: "Garbage Disposal Repair", search: "Garbage Disposal Repair", group: "PRO" },
   { id: "hvac", name: "HVAC Maintenance", search: "HVAC Technician", group: "PRO" },
   { id: "ac-repair", name: "AC Repair", search: "AC Repair Technician", group: "PRO" },
+  { id: "ac-installer", name: "AC Installer", search: "AC Installer", group: "PRO" },
   { id: "furnace-repair", name: "Furnace Repair", search: "Furnace Repair", group: "PRO" },
   { id: "air-duct-cleaning", name: "Air Duct Cleaning", search: "Air Duct Cleaning", group: "PRO" },
   { id: "electrician", name: "Electrical Work", search: "Electrician", group: "PRO" },
