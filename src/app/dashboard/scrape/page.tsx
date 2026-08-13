@@ -17,6 +17,7 @@ interface ScrapeRun {
   status: ScrapeStatus;
   source?: string;
   target?: string;
+  statusMessage?: string;
 }
 
 interface ImportResult {
@@ -549,8 +550,10 @@ export default function ScrapePage() {
                   {importing ? "Importing..." : "Import Results as Leads"}
                 </button>
               ) : (
-                <p style={{ color: "#ef4444", fontSize: "12px", margin: "12px 0 0" }}>
-                  Run did not complete successfully. Check your Apify console for details.
+                <p style={{ color: "#ef4444", fontSize: "12px", margin: "12px 0 0", lineHeight: 1.5 }}>
+                  {run.statusMessage
+                    ? `Failed: ${run.statusMessage}`
+                    : "Run did not complete successfully. Check your Apify console for details."}
                 </p>
               )}
 
