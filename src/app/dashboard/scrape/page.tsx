@@ -44,10 +44,11 @@ function queryForService(
   svc: { name: string; search: string },
   source: string,
 ) {
-  // People Finder is job-title based; Maps gets "… service" for sharper Places results
+  // People Finder is job-title based; Google Maps gets skill-accurate trade queries
   if (source === "people") return svc.search;
   if (source === "google") {
-    return /\bservice(s)?\b/i.test(svc.name) ? svc.name : `${svc.name} service`;
+    // Prefer catalog search term (e.g. "AC Installer") — backend sharpens it further
+    return svc.search || svc.name;
   }
   return svc.name;
 }
@@ -420,7 +421,7 @@ export default function ScrapePage() {
                     ? "dallas or honolulu (city site — not Hawaii / Texas)"
                     : source === "people"
                       ? 'e.g. "Dallas" or "texas" or "texas, us"'
-                      : "e.g. Dallas, TX, USA"
+                      : "e.g. Miami, FL — also searches nearby metro cities"
                 }
                 required={source === "google"}
                 style={inputStyle}
@@ -431,7 +432,7 @@ export default function ScrapePage() {
               {source === "people" &&
                 "Uses Apify People Finder (~$1.50 / 1,000). Junk/trash searches expand to related titles; email status is not limited to validated-only (import still requires phone or email). State names like “texas” map to texas, us; cities like “dallas” use city filter."}
               {source === "google" &&
-                "Uses Google Maps business listings. Off-topic places (churches, hotels, wrong trades) are filtered on import so only businesses matching the selected service are kept."}
+                "Uses Google Maps. Searches your city plus nearby metro areas. Import keeps businesses that match the selected skill (title + Google category). Check “Listed as” on each lead — that is their real trade."}
               {source === "craigslist" &&
                 target === "individual" &&
                 "Owner listings: goods → for-sale, service queries (trash, cleaning, plumbing…) → services. Use a city subdomain (dallas, honolulu), not a state name like Hawaii. Only listings with phone or email are imported."}
@@ -578,7 +579,9 @@ export default function ScrapePage() {
                   </p>
                   <p style={{ color: "#6b7280", fontSize: "12px", margin: "0 0 12px" }}>
                     {importResult.scraped} scraped
-                    {`, ${importResult.skippedDuplicates ?? importResult.skipped} skipped as duplicates`}
+                    {(importResult.skippedDuplicates ?? importResult.skipped)
+                      ? `, ${importResult.skippedDuplicates ?? importResult.skipped} skipped as duplicates (same phone/email/URL)`
+                      : ", 0 duplicates skipped"}
                     {importResult.skippedJunk
                       ? `, ${importResult.skippedJunk} junk skipped`
                       : ""}

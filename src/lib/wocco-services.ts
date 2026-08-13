@@ -30,22 +30,22 @@ export const WOCCO_SERVICES: WoccoService[] = [
   { id: "upholstery-cleaning", name: "Upholstery Cleaning", search: "Upholstery Cleaner", group: "NOW" },
   { id: "window-cleaning", name: "Window Cleaning", search: "Window Cleaner", group: "NOW" },
   { id: "pressure-washing", name: "Pressure Washing", search: "Pressure Washing", group: "NOW" },
-  // People Finder expands junk/trash into related titles (Hauler, Waste Collector, …)
+  // People Finder expands junk/trash into related private-trade titles (Hauler, Junk Hauler, …)
   {
     id: "junk-removal",
     name: "Junk Removal",
     search: "Junk Remover",
     group: "NOW",
     peopleTitleHint:
-      "Searches Junk Remover, Junk Removal Specialist, Hauler, Waste Collector, Sanitation Worker, and related titles",
+      "Searches Junk Remover, Junk Removal Specialist, Junk Hauler, Hauler, Debris Remover, and related titles",
   },
   {
     id: "trash-removal",
     name: "Trash Removal",
-    search: "Junk Remover",
+    search: "Trash Remover",
     group: "NOW",
     peopleTitleHint:
-      "Searches Junk Remover, Junk Removal Specialist, Hauler, Waste Collector, Sanitation Worker, and related titles",
+      "Searches Trash Remover, Junk Remover, Junk Removal Specialist, Hauler, Debris Remover, and related titles",
   },
   { id: "furniture-moving", name: "Furniture Moving", search: "Mover", group: "NOW" },
   { id: "packing", name: "Packing Services", search: "Packer", group: "NOW" },
