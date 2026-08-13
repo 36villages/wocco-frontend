@@ -55,7 +55,7 @@ function queryForService(
 
 export default function ScrapePage() {
   const router = useRouter();
-  const [target, setTarget] = useState<"business" | "individual">("business");
+  const [target, setTarget] = useState<"business" | "individual">("individual");
   const [source, setSource] = useState("google");
   const [serviceId, setServiceId] = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
@@ -92,7 +92,8 @@ export default function ScrapePage() {
 
   function applyTarget(next: "business" | "individual") {
     setTarget(next);
-    const nextSource = next === "individual" ? "people" : "google";
+    // Individual defaults to Google (skill-matched owner-operators), not People Finder
+    const nextSource = next === "individual" ? "google" : "google";
     setSource(nextSource);
     setMaxResults(50);
     if (serviceId) {
@@ -327,7 +328,7 @@ export default function ScrapePage() {
                 ))}
               </select>
               <p style={{ color: "#6b7280", fontSize: "11px", margin: "8px 0 0", lineHeight: 1.45 }}>
-                Individuals → People Finder · Businesses → Google Maps · Craigslist optional
+                Individuals → Google Maps (skill match) · Businesses → Google Maps · People Finder / Craigslist optional
               </p>
             </div>
 
@@ -341,6 +342,7 @@ export default function ScrapePage() {
                 >
                   {target === "individual" ? (
                     <>
+                      <option value="google">Google Maps (individuals / owner-operators)</option>
                       <option value="people">People Finder (name + email + phone)</option>
                       <option value="craigslist">Craigslist owners (listings + photos)</option>
                     </>
@@ -432,7 +434,9 @@ export default function ScrapePage() {
               {source === "people" &&
                 "Uses Apify People Finder (~$1.50 / 1,000). Junk/trash searches expand to related titles; email status is not limited to validated-only (import still requires phone or email). State names like “texas” map to texas, us; cities like “dallas” use city filter."}
               {source === "google" &&
-                "Uses Google Maps. Searches your city plus nearby metro areas. Import keeps businesses that match the selected skill (title + Google category). Check “Listed as” on each lead — that is their real trade."}
+                (target === "individual"
+                  ? "Google Maps for individuals: finds independent / owner-operator techs near your city + metro. Import keeps only people/places whose skill (title + Google category) matches the selected service. Check “Listed as” on each lead."
+                  : "Uses Google Maps. Searches your city plus nearby metro areas. Import keeps businesses that match the selected skill (title + Google category). Check “Listed as” on each lead — that is their real trade.")}
               {source === "craigslist" &&
                 target === "individual" &&
                 "Owner listings: goods → for-sale, service queries (trash, cleaning, plumbing…) → services. Use a city subdomain (dallas, honolulu), not a state name like Hawaii. Only listings with phone or email are imported."}
