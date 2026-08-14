@@ -61,6 +61,7 @@ export default function ScrapePage() {
   const [serviceId, setServiceId] = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
   const [query, setQuery] = useState("");
+  const [location, setLocation] = useState("");
   const [groupUrl, setGroupUrl] = useState("");
   const [maxResults, setMaxResults] = useState(50);
   const [isNarrow, setIsNarrow] = useState(false);
