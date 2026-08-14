@@ -61,7 +61,7 @@ export default function ScrapePage() {
   const [serviceId, setServiceId] = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
   const [query, setQuery] = useState("");
-  const [location, setLocation] = useState("");
+  const [groupUrl, setGroupUrl] = useState("");
   const [maxResults, setMaxResults] = useState(50);
   const [isNarrow, setIsNarrow] = useState(false);
 
@@ -111,7 +111,7 @@ export default function ScrapePage() {
 
   function applySource(next: string) {
     setSource(next);
-    setMaxResults(next === "craigslist" ? 20 : 50);
+    setMaxResults(next === "craigslist" ? 20 : next === "facebook" ? 30 : 50);
     if (serviceId) {
       const svc = findWoccoService(serviceId);
       if (svc) setQuery(queryForService(svc, next));
@@ -164,7 +164,8 @@ export default function ScrapePage() {
         target,
         source,
         query,
-        location,
+        location: source === "facebook" ? undefined : location,
+        groupUrl: source === "facebook" ? groupUrl : undefined,
         maxResults,
       });
       setRun(res.data);
@@ -329,7 +330,7 @@ export default function ScrapePage() {
                 ))}
               </select>
               <p style={{ color: "#6b7280", fontSize: "11px", margin: "8px 0 0", lineHeight: 1.45 }}>
-                Individuals → Google Maps (skill match) · Businesses → Google Maps · People Finder / Craigslist optional
+                Individuals → Google Maps (skill match) · Facebook group URL paste · People Finder / Craigslist optional
               </p>
             </div>
 
@@ -344,12 +345,14 @@ export default function ScrapePage() {
                   {target === "individual" ? (
                     <>
                       <option value="google">Google Maps (individuals / owner-operators)</option>
+                      <option value="facebook">Facebook group (paste group URL)</option>
                       <option value="people">People Finder (name + email + phone)</option>
                       <option value="craigslist">Craigslist owners (listings + photos)</option>
                     </>
                   ) : (
                     <>
                       <option value="google">Google Maps (businesses)</option>
+                      <option value="facebook">Facebook group (paste group URL)</option>
                       <option value="craigslist">Craigslist services</option>
                     </>
                   )}
@@ -392,9 +395,11 @@ export default function ScrapePage() {
                 placeholder={
                   source === "people"
                     ? 'e.g. "House Cleaner" or "Junk Remover"'
-                    : target === "individual"
-                      ? 'e.g. "House Cleaner" or "Junk Removal"'
-                      : 'e.g. "House Cleaning" or "HVAC Technician"'
+                    : source === "facebook"
+                      ? "Selected service skill (posts must match this trade)"
+                      : target === "individual"
+                        ? 'e.g. "House Cleaner" or "Junk Removal"'
+                        : 'e.g. "House Cleaning" or "HVAC Technician"'
                 }
                 required
                 style={inputStyle}
@@ -408,6 +413,20 @@ export default function ScrapePage() {
               )}
             </div>
 
+            {source === "facebook" && (
+              <div style={{ marginBottom: "16px", minWidth: 0 }}>
+                <label style={labelStyle}>Facebook group URL (paste)</label>
+                <input
+                  value={groupUrl}
+                  onChange={(e) => setGroupUrl(e.target.value)}
+                  placeholder="https://www.facebook.com/groups/your-group"
+                  required
+                  style={inputStyle}
+                />
+              </div>
+            )}
+
+            {source !== "facebook" && (
             <div style={{ marginBottom: "8px", minWidth: 0 }}>
               <label style={labelStyle}>
                 {source === "craigslist"
@@ -430,6 +449,7 @@ export default function ScrapePage() {
                 style={inputStyle}
               />
             </div>
+            )}
 
             <p style={{ color: "#4b5563", fontSize: "11px", margin: "0 0 20px", lineHeight: 1.5 }}>
               {source === "people" &&
@@ -438,6 +458,8 @@ export default function ScrapePage() {
                 (target === "individual"
                   ? "Google Maps for individuals: finds independent / owner-operator techs near your city + metro. Import keeps only people/places whose skill (title + Google category) matches the selected service. Check “Listed as” on each lead."
                   : "Uses Google Maps. Searches your city plus nearby metro areas. Import keeps businesses that match the selected skill (title + Google category). Check “Listed as” on each lead — that is their real trade.")}
+              {source === "facebook" &&
+                "Paste a public Facebook group URL. Import keeps posts whose text matches the selected skill and include a phone or email. Looking-for-a-tech posts are skipped. Private groups cannot be scraped."}
               {source === "craigslist" &&
                 target === "individual" &&
                 "Owner listings: goods → for-sale, service queries (trash, cleaning, plumbing…) → services. Use a city subdomain (dallas, honolulu), not a state name like Hawaii. Only listings with phone or email are imported."}
