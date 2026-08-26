@@ -28,6 +28,7 @@ interface ImportResult {
   skippedNoContact?: number;
   skippedJunk?: number;
   skippedIrrelevant?: number;
+  skippedCompanies?: number;
   batchId?: string;
   message?: string;
 }
@@ -94,8 +95,8 @@ export default function ScrapePage() {
 
   function applyTarget(next: "business" | "individual") {
     setTarget(next);
-    // Individual defaults to Google (skill-matched owner-operators), not People Finder
-    const nextSource = next === "individual" ? "google" : "google";
+    // Individual stays on Google (skill match) — People Finder was unreliable / not tallying
+    const nextSource = "google";
     setSource(nextSource);
     setMaxResults(50);
     if (serviceId) {
@@ -331,7 +332,7 @@ export default function ScrapePage() {
                 ))}
               </select>
               <p style={{ color: "#6b7280", fontSize: "11px", margin: "8px 0 0", lineHeight: 1.45 }}>
-                Individuals → Google Maps (skill match) · Facebook group URL paste · People Finder / Craigslist optional
+                Individuals → Google Maps (skill match; companies filtered) · Facebook group · People Finder optional. Businesses → Google Maps.
               </p>
             </div>
 
@@ -454,10 +455,10 @@ export default function ScrapePage() {
 
             <p style={{ color: "#4b5563", fontSize: "11px", margin: "0 0 20px", lineHeight: 1.5 }}>
               {source === "people" &&
-                "Uses Apify People Finder (~$1.50 / 1,000). Junk/trash searches expand to related titles; email status is not limited to validated-only (import still requires phone or email). State names like “texas” map to texas, us; cities like “dallas” use city filter."}
+                "People Finder (~$1.50 / 1,000). Optional — historically sparse / not skill-tallying for our trades. Prefer Google or Facebook group for Individual."}
               {source === "google" &&
                 (target === "individual"
-                  ? "Google Maps for individuals: finds independent / owner-operator techs near your city + metro. Import keeps only people/places whose skill (title + Google category) matches the selected service. Check “Listed as” on each lead."
+                  ? "Google Maps for Individual (skill match). Import drops company titles (LLC, Inc, Services…) and keeps person-shaped / owner-operator names so recruiters can contact people, not corporations."
                   : "Uses Google Maps. Searches your city plus nearby metro areas. Import keeps businesses that match the selected skill (title + Google category). Check “Listed as” on each lead — that is their real trade.")}
               {source === "facebook" &&
                 "Paste a public Facebook group URL. Import keeps posts whose text matches the selected skill and include a phone or email. Looking-for-a-tech posts are skipped. Private groups cannot be scraped."}
@@ -620,6 +621,9 @@ export default function ScrapePage() {
                       : ""}
                     {importResult.skippedIrrelevant
                       ? `, ${importResult.skippedIrrelevant} off-topic skipped`
+                      : ""}
+                    {importResult.skippedCompanies
+                      ? `, ${importResult.skippedCompanies} companies skipped (Individual needs people)`
                       : ""}
                   </p>
                   {importResult.imported > 0 && (
