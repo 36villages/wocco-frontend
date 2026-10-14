@@ -365,16 +365,16 @@ export default function ScrapePage() {
                 <input
                   type="number"
                   min={1}
-                  max={100}
+                  max={500}
                   value={maxResults}
-                  onChange={(e) => setMaxResults(parseInt(e.target.value) || 50)}
+                  onChange={(e) =>
+                    setMaxResults(Math.min(parseInt(e.target.value) || 50, 500))
+                  }
                   style={inputStyle}
                 />
-                {source === "people" && (
-                  <p style={{ color: "#6b7280", fontSize: "11px", margin: "8px 0 0", lineHeight: 1.45 }}>
-                    Sparse trades (junk/trash): try 50–100. Cap is 100 per run.
-                  </p>
-                )}
+                <p style={{ color: "#6b7280", fontSize: "11px", margin: "8px 0 0", lineHeight: 1.45 }}>
+                  Up to 500 per run. Bigger runs cost more Apify credit; filters still remove off-topic, company and no-contact results.
+                </p>
               </div>
             </div>
 
