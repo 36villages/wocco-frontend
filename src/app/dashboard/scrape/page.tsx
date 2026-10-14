@@ -28,7 +28,8 @@ interface ImportResult {
   skippedNoContact?: number;
   skippedJunk?: number;
   skippedIrrelevant?: number;
-  skippedCompanies?: number;
+  importedIndividuals?: number;
+  importedBusinesses?: number;
   batchId?: string;
   message?: string;
 }
@@ -332,7 +333,7 @@ export default function ScrapePage() {
                 ))}
               </select>
               <p style={{ color: "#6b7280", fontSize: "11px", margin: "8px 0 0", lineHeight: 1.45 }}>
-                Individuals → Google Maps (skill match; companies filtered) · Facebook group · People Finder optional. Businesses → Google Maps.
+                Individuals → Google Maps (skill match; each lead tagged individual or small business) · Facebook group · People Finder optional. Businesses → Google Maps.
               </p>
             </div>
 
@@ -373,7 +374,7 @@ export default function ScrapePage() {
                   style={inputStyle}
                 />
                 <p style={{ color: "#6b7280", fontSize: "11px", margin: "8px 0 0", lineHeight: 1.45 }}>
-                  Up to 500 per run. Bigger runs cost more Apify credit; filters still remove off-topic, company and no-contact results.
+                  Up to 500 per run. Bigger runs cost more Apify credit; filters still remove off-topic and no-contact results.
                 </p>
               </div>
             </div>
@@ -458,7 +459,7 @@ export default function ScrapePage() {
                 "People Finder (~$1.50 / 1,000). Optional — historically sparse / not skill-tallying for our trades. Prefer Google or Facebook group for Individual."}
               {source === "google" &&
                 (target === "individual"
-                  ? "Google Maps for Individual (skill match). Import drops company titles (LLC, Inc, Services…) and keeps person-shaped / owner-operator names so recruiters can contact people, not corporations."
+                  ? "Google Maps for Individual (skill match). Import keeps everything but tags each lead: person / owner-operator names (\"Toni's Cleaning\", \"Housekeeping by Shawn\") as Individual, brands and franchises as Business. Use the Individuals tab on Leads for people only."
                   : "Uses Google Maps. Searches your city plus nearby metro areas. Import keeps businesses that match the selected skill (title + Google category). Check “Listed as” on each lead — that is their real trade.")}
               {source === "facebook" &&
                 "Paste a public Facebook group URL. Import keeps posts whose text matches the selected skill and include a phone or email. Looking-for-a-tech posts are skipped. Private groups cannot be scraped."}
@@ -622,8 +623,8 @@ export default function ScrapePage() {
                     {importResult.skippedIrrelevant
                       ? `, ${importResult.skippedIrrelevant} off-topic skipped`
                       : ""}
-                    {importResult.skippedCompanies
-                      ? `, ${importResult.skippedCompanies} companies skipped (Individual needs people)`
+                    {importResult.importedIndividuals != null
+                      ? `. Tagged: ${importResult.importedIndividuals} individual, ${importResult.importedBusinesses ?? 0} small business`
                       : ""}
                   </p>
                   {importResult.imported > 0 && (
