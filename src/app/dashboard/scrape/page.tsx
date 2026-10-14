@@ -28,8 +28,8 @@ interface ImportResult {
   skippedNoContact?: number;
   skippedJunk?: number;
   skippedIrrelevant?: number;
-  importedIndividuals?: number;
-  importedBusinesses?: number;
+  skippedBusinesses?: number;
+  individualsWanted?: number;
   batchId?: string;
   message?: string;
 }
@@ -56,6 +56,9 @@ function queryForService(
   return svc.name;
 }
 
+/** Backend scrapes ~11 places per wanted individual, capped at 1,500 places. */
+const INDIVIDUAL_GOOGLE_CAP = 130;
+
 export default function ScrapePage() {
   const router = useRouter();
   const [target, setTarget] = useState<"business" | "individual">("individual");
@@ -65,7 +68,7 @@ export default function ScrapePage() {
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
   const [groupUrl, setGroupUrl] = useState("");
-  const [maxResults, setMaxResults] = useState(50);
+  const [maxResults, setMaxResults] = useState(100);
   const [isNarrow, setIsNarrow] = useState(false);
 
   const [run, setRun] = useState<ScrapeRun | null>(null);
@@ -99,7 +102,7 @@ export default function ScrapePage() {
     // Individual stays on Google (skill match) — People Finder was unreliable / not tallying
     const nextSource = "google";
     setSource(nextSource);
-    setMaxResults(50);
+    setMaxResults(next === "individual" ? 100 : 50);
     if (serviceId) {
       const svc = findWoccoService(serviceId);
       if (svc) setQuery(queryForService(svc, nextSource));
@@ -114,7 +117,15 @@ export default function ScrapePage() {
 
   function applySource(next: string) {
     setSource(next);
-    setMaxResults(next === "craigslist" ? 20 : next === "facebook" ? 30 : 50);
+    setMaxResults(
+      next === "craigslist"
+        ? 20
+        : next === "facebook"
+          ? 30
+          : next === "google" && target === "individual"
+            ? 100
+            : 50,
+    );
     if (serviceId) {
       const svc = findWoccoService(serviceId);
       if (svc) setQuery(queryForService(svc, next));
@@ -133,6 +144,10 @@ export default function ScrapePage() {
       ),
     })).filter((g) => g.services.length > 0);
   }, [serviceFilter]);
+
+  const individualGoogle = target === "individual" && source === "google";
+  const resultCap = individualGoogle ? INDIVIDUAL_GOOGLE_CAP : 500;
+  const individualPlaces = Math.min(maxResults * 11, 1500);
 
   const selectedService = serviceId ? findWoccoService(serviceId) : undefined;
   // Keep select value valid when filter hides the current option
@@ -333,7 +348,7 @@ export default function ScrapePage() {
                 ))}
               </select>
               <p style={{ color: "#6b7280", fontSize: "11px", margin: "8px 0 0", lineHeight: 1.45 }}>
-                Individuals → Google Maps (skill match; each lead tagged individual or small business) · Facebook group · People Finder optional. Businesses → Google Maps.
+                Individuals → Google Maps (skill match; only owner-operators imported, businesses skipped) · Facebook group · People Finder optional. Businesses → Google Maps.
               </p>
             </div>
 
@@ -362,19 +377,23 @@ export default function ScrapePage() {
                 </select>
               </div>
               <div style={{ minWidth: 0 }}>
-                <label style={labelStyle}>Max Results</label>
+                <label style={labelStyle}>
+                  {individualGoogle ? "Individuals wanted" : "Max Results"}
+                </label>
                 <input
                   type="number"
                   min={1}
-                  max={500}
+                  max={resultCap}
                   value={maxResults}
                   onChange={(e) =>
-                    setMaxResults(Math.min(parseInt(e.target.value) || 50, 500))
+                    setMaxResults(Math.min(parseInt(e.target.value) || 50, resultCap))
                   }
                   style={inputStyle}
                 />
                 <p style={{ color: "#6b7280", fontSize: "11px", margin: "8px 0 0", lineHeight: 1.45 }}>
-                  Up to 500 per run. Bigger runs cost more Apify credit; filters still remove off-topic and no-contact results.
+                  {individualGoogle
+                    ? `Scrapes ~${individualPlaces} Google places (about $${(individualPlaces * 0.004).toFixed(2)}) and imports only individuals — businesses are skipped. Max ${INDIVIDUAL_GOOGLE_CAP}. Small states / rare trades may return fewer.`
+                    : "Up to 500 per run. Bigger runs cost more Apify credit; filters still remove off-topic and no-contact results."}
                 </p>
               </div>
             </div>
@@ -459,7 +478,7 @@ export default function ScrapePage() {
                 "People Finder (~$1.50 / 1,000). Optional — historically sparse / not skill-tallying for our trades. Prefer Google or Facebook group for Individual."}
               {source === "google" &&
                 (target === "individual"
-                  ? "Google Maps for Individual (skill match). Import keeps everything but tags each lead: person / owner-operator names (\"Toni's Cleaning\", \"Housekeeping by Shawn\") as Individual, brands and franchises as Business. Use the Individuals tab on Leads for people only."
+                  ? "Google Maps for Individual (skill match). Searches several person-style phrases and imports only owner-operator names (\"Toni's Cleaning\", \"Housekeeping by Shawn\", \"Laura Johnson Cleaning\"); brands and franchises are skipped."
                   : "Uses Google Maps. Searches your city plus nearby metro areas. Import keeps businesses that match the selected skill (title + Google category). Check “Listed as” on each lead — that is their real trade.")}
               {source === "facebook" &&
                 "Paste a public Facebook group URL. Import keeps posts whose text matches the selected skill and include a phone or email. Looking-for-a-tech posts are skipped. Private groups cannot be scraped."}
@@ -623,8 +642,8 @@ export default function ScrapePage() {
                     {importResult.skippedIrrelevant
                       ? `, ${importResult.skippedIrrelevant} off-topic skipped`
                       : ""}
-                    {importResult.importedIndividuals != null
-                      ? `. Tagged: ${importResult.importedIndividuals} individual, ${importResult.importedBusinesses ?? 0} small business`
+                    {importResult.skippedBusinesses
+                      ? `, ${importResult.skippedBusinesses} business listings skipped (Individual = people only)`
                       : ""}
                   </p>
                   {importResult.imported > 0 && (
