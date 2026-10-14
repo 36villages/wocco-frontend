@@ -5,6 +5,15 @@ import { getUser } from "@/lib/auth";
 import api from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 
+// No 0/O/1/l/I so the password can be read out over the phone without mistakes
+const TEMP_PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+
+function generateTempPassword(length = 10) {
+  const values = new Uint32Array(length);
+  crypto.getRandomValues(values);
+  return Array.from(values, (v) => TEMP_PASSWORD_CHARS[v % TEMP_PASSWORD_CHARS.length]).join("");
+}
+
 export default function AgentsPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -14,6 +23,12 @@ export default function AgentsPage() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [resetTarget, setResetTarget] = useState<any>(null);
+  const [resetValue, setResetValue] = useState("");
+  const [resetDone, setResetDone] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const isSuperAdmin = user?.role === "super_admin";
 
@@ -62,6 +77,48 @@ export default function AgentsPage() {
       setError(getErrorMessage(e, "Failed to update role"));
     } finally {
       setUpdating(null);
+    }
+  }
+
+  function openReset(agent: any) {
+    setResetTarget(agent);
+    setResetValue(generateTempPassword());
+    setResetDone(false);
+    setResetError("");
+    setCopied(false);
+  }
+
+  function closeReset() {
+    setResetTarget(null);
+    setResetValue("");
+    setResetDone(false);
+    setResetError("");
+  }
+
+  async function submitReset() {
+    if (!resetTarget) return;
+    if (resetValue.length < 8) {
+      setResetError("Password must be at least 8 characters");
+      return;
+    }
+    setResetting(true);
+    setResetError("");
+    try {
+      await api.patch("/users/" + resetTarget.id + "/password", { password: resetValue });
+      setResetDone(true);
+    } catch (e) {
+      setResetError(getErrorMessage(e, "Failed to reset password"));
+    } finally {
+      setResetting(false);
+    }
+  }
+
+  async function copyResetPassword() {
+    try {
+      await navigator.clipboard.writeText(resetValue);
+      setCopied(true);
+    } catch {
+      setCopied(false);
     }
   }
 
@@ -490,6 +547,26 @@ export default function AgentsPage() {
                             {updating === agent.id ? "..." : "Reactivate"}
                           </button>
                         )}
+                        {isSuperAdmin &&
+                          agent.id !== user?.id &&
+                          agent.role !== "super_admin" && (
+                            <button
+                              onClick={() => openReset(agent)}
+                              disabled={updating === agent.id}
+                              style={{
+                                background: "rgba(167,139,250,0.15)",
+                                border: "1px solid rgba(167,139,250,0.3)",
+                                color: "#a78bfa",
+                                borderRadius: "6px",
+                                padding: "5px 12px",
+                                fontSize: "11px",
+                                fontWeight: "600",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Reset password
+                            </button>
+                          )}
                         {agent.id === user?.id && (
                           <span style={{ color: "#374151", fontSize: "11px", fontStyle: "italic" }}>
                             You
@@ -504,6 +581,170 @@ export default function AgentsPage() {
           </div>
         )}
       </main>
+
+      {resetTarget && (
+        <div
+          onClick={closeReset}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+            padding: "16px",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#111827",
+              border: "1px solid #1f2937",
+              borderRadius: "16px",
+              padding: "24px",
+              width: "100%",
+              maxWidth: "420px",
+            }}
+          >
+            <h3 style={{ color: "white", fontSize: "15px", fontWeight: "600", margin: "0 0 4px" }}>
+              Reset password
+            </h3>
+            <p style={{ color: "#9ca3af", fontSize: "12px", margin: "0 0 16px" }}>
+              {resetTarget.firstName} {resetTarget.lastName} · {resetTarget.email}
+            </p>
+
+            {resetDone ? (
+              <>
+                <p style={{ color: "#34d399", fontSize: "13px", margin: "0 0 12px" }}>
+                  Password reset. Send these login details to the user:
+                </p>
+                <div
+                  style={{
+                    background: "#0f172a",
+                    border: "1px solid #374151",
+                    borderRadius: "8px",
+                    padding: "12px",
+                    fontSize: "13px",
+                    color: "#e5e7eb",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Email: {resetTarget.email}
+                  <br />
+                  Password: <span style={{ fontFamily: "monospace", fontWeight: 700 }}>{resetValue}</span>
+                </div>
+                <p style={{ color: "#6b7280", fontSize: "11px", margin: "10px 0 16px" }}>
+                  This password is not shown again after you close this window.
+                </p>
+                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={copyResetPassword}
+                    style={{
+                      background: "#1f2937",
+                      border: "1px solid #374151",
+                      color: "#e5e7eb",
+                      borderRadius: "8px",
+                      padding: "8px 14px",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {copied ? "Copied" : "Copy password"}
+                  </button>
+                  <button
+                    onClick={closeReset}
+                    style={{
+                      background: "#2563eb",
+                      border: "1px solid #2563eb",
+                      color: "white",
+                      borderRadius: "8px",
+                      padding: "8px 14px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Done
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <label style={{ color: "#9ca3af", fontSize: "11px", display: "block", marginBottom: "6px" }}>
+                  New password (at least 8 characters)
+                </label>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input
+                    value={resetValue}
+                    onChange={(e) => setResetValue(e.target.value)}
+                    style={{
+                      flex: 1,
+                      background: "#1f2937",
+                      border: "1px solid #374151",
+                      color: "white",
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                      fontSize: "13px",
+                      fontFamily: "monospace",
+                      outline: "none",
+                    }}
+                  />
+                  <button
+                    onClick={() => setResetValue(generateTempPassword())}
+                    style={{
+                      background: "#1f2937",
+                      border: "1px solid #374151",
+                      color: "#9ca3af",
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Generate
+                  </button>
+                </div>
+                {resetError && (
+                  <p style={{ color: "#fca5a5", fontSize: "12px", margin: "10px 0 0" }}>{resetError}</p>
+                )}
+                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "18px" }}>
+                  <button
+                    onClick={closeReset}
+                    style={{
+                      background: "#1f2937",
+                      border: "1px solid #374151",
+                      color: "#9ca3af",
+                      borderRadius: "8px",
+                      padding: "8px 14px",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitReset}
+                    disabled={resetting}
+                    style={{
+                      background: "#7c3aed",
+                      border: "1px solid #7c3aed",
+                      color: "white",
+                      borderRadius: "8px",
+                      padding: "8px 14px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {resetting ? "Resetting..." : "Reset password"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
