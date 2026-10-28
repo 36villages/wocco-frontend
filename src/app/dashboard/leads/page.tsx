@@ -3,7 +3,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { LeadCallButton } from "@/components/dialer/LeadDialer";
+import { LeadCallButton, LeadDialerDock } from "@/components/dialer/LeadDialer";
 
 const PAGE_SIZE = 100;
 
@@ -662,6 +662,8 @@ function LeadsPageInner() {
         </button>
       </div>
 
+      {/* On wide screens the dialer sits beside the list; on smaller ones Call opens it as a drawer. */}
+      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
       <main style={{ flex: 1, overflow: "auto", padding: isNarrow ? "16px" : "24px", minWidth: 0 }}>
         {error ? (
           <div
@@ -949,6 +951,8 @@ function LeadsPageInner() {
           </>
         )}
       </main>
+      <LeadDialerDock style={{ width: 360, flexShrink: 0 }} />
+      </div>
     </>
   );
 }
