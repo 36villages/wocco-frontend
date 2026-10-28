@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { LeadCallButton } from "@/components/dialer/LeadDialer";
 
 function parseAddressFields(lead: any) {
   let street = lead.address || "";
@@ -169,6 +170,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
             {(lead.leadType || "business").toUpperCase()} · {lead.source?.toUpperCase()}
           </p>
         </div>
+        <LeadCallButton lead={lead} size="md" onSaved={() => fetchLead()} />
         <span
           style={{
             background: "rgba(96,165,250,0.1)",

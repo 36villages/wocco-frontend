@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isAuthenticated } from "@/lib/auth";
 import Sidebar from "@/components/Sidebar";
+import { LeadDialerProvider } from "@/components/dialer/LeadDialer";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   return (
+    <LeadDialerProvider>
     <div
       style={{
         background: "#030712",
@@ -46,5 +48,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {children}
       </div>
     </div>
+    </LeadDialerProvider>
   );
 }

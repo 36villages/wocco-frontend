@@ -3,6 +3,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
+import { LeadCallButton } from "@/components/dialer/LeadDialer";
 
 const PAGE_SIZE = 100;
 
@@ -886,6 +887,12 @@ function LeadsPageInner() {
                         <option value="closed_won">Closed Won</option>
                         <option value="disqualified">Disqualified</option>
                       </select>
+                      <LeadCallButton
+                        lead={lead}
+                        onSaved={(status) =>
+                          setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, status } : l)))
+                        }
+                      />
                     </div>
                   </div>
                 );
