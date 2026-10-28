@@ -1,6 +1,5 @@
 "use client";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import api from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toE164 } from "@/lib/dialer/types";
@@ -46,18 +45,11 @@ function tomorrowAtTen() {
 
 type OnSaved = (status: string, callbackDate?: string) => void;
 
-interface LeadDialerContextValue {
-  open: (lead: any, onSaved?: OnSaved) => void;
-  /** Set by <LeadDialerDock>: when present, the panel renders there instead of in the drawer. */
-  setDock: (el: HTMLElement | null) => void;
-}
-
-const LeadDialerContext = createContext<LeadDialerContextValue | null>(null);
+const LeadDialerContext = createContext<{ open: (lead: any, onSaved?: OnSaved) => void } | null>(null);
 
 /**
- * One lead dialer for the whole dashboard. It renders inside a page's <LeadDialerDock> when the
- * page has one (Leads), otherwise in a slide-out drawer. It stays mounted after first use so the
- * browser softphone remains registered between calls.
+ * One dialer drawer for the whole dashboard. It stays mounted after first use so the browser
+ * softphone remains registered between calls.
  */
 export function LeadDialerProvider({ children }: { children: ReactNode }) {
   const [target, setTarget] = useState<{ lead: any; onSaved?: OnSaved } | null>(null);
@@ -68,9 +60,6 @@ export function LeadDialerProvider({ children }: { children: ReactNode }) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [pickingCallback, setPickingCallback] = useState(false);
   const [callbackAt, setCallbackAt] = useState(tomorrowAtTen);
-  const [dock, setDock] = useState<HTMLElement | null>(null);
-  const dockRef = useRef(dock);
-  dockRef.current = dock;
 
   const open = useCallback((lead: any, onSaved?: OnSaved) => {
     setTarget({ lead, onSaved });
@@ -79,8 +68,7 @@ export function LeadDialerProvider({ children }: { children: ReactNode }) {
     setSaveError(null);
     setPickingCallback(false);
     setCallbackAt(tomorrowAtTen());
-    // A docked panel is already on screen; only slide the drawer out when there is no dock.
-    setVisible(!dockRef.current);
+    setVisible(true);
   }, []);
 
   const close = useCallback(() => setVisible(false), []);
@@ -111,8 +99,7 @@ export function LeadDialerProvider({ children }: { children: ReactNode }) {
         await api.patch("/leads/" + lead.id + "/callback", { callbackDate });
       }
       target?.onSaved?.(status, callbackDate);
-      if (dock) setTarget(null);
-      else setVisible(false);
+      setVisible(false);
     } catch (e) {
       setSaveError(getErrorMessage(e, "Could not save the outcome"));
     } finally {
@@ -121,157 +108,107 @@ export function LeadDialerProvider({ children }: { children: ReactNode }) {
   }
 
   const suggested: LeadStatus | null = lastCall ? (lastCall.outcome === "failed" ? "no_answer" : "called") : null;
-  const value = useMemo(() => ({ open, setDock }), [open]);
-
-  // The Dialer keeps one position in this tree so switching leads never remounts it (and drops the softphone).
-  const panel = (
-    <>
-      {lead ? (
-        <>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ ...s.eyebrow, margin: "0 0 4px" }}>{lead.leadType === "individual" ? "Individual" : "Business"}</p>
-              <p style={{ color: "white", fontSize: 16, fontWeight: 800, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {leadName(lead)}
-              </p>
-            </div>
-            <button type="button" onClick={dock ? () => setTarget(null) : close} aria-label="Close" style={{ ...s.btn, padding: "6px 10px" }}>
-              ✕
-            </button>
-          </div>
-
-          {phones.length > 1 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-              {phones.map((p, i) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPhoneIndex(i)}
-                  style={{ ...s.btn, borderColor: i === phoneIndex ? "#34d399" : "#374151", color: i === phoneIndex ? "#34d399" : "#9ca3af" }}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
-      ) : (
-        <p style={{ ...s.eyebrow, margin: "0 0 12px" }}>Press Call on a lead, or dial any number</p>
-      )}
-      <Dialer
-        phoneNumber={lead ? (phones[phoneIndex] ?? "") : undefined}
-        leadName={lead ? leadName(lead) : undefined}
-        onCallEnded={lead ? setLastCall : undefined}
-        style={{ maxWidth: "none" }}
-      />
-      {lead && (
-        <div style={{ marginTop: 16 }}>
-          <p style={{ ...s.eyebrow, margin: "0 0 8px" }}>{lastCall ? "How did it go?" : "Set outcome"}</p>
-          {pickingCallback ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={{ ...s.eyebrow, display: "flex", flexDirection: "column", gap: 4 }}>
-                Call back at
-                <input
-                  type="datetime-local"
-                  value={callbackAt}
-                  onChange={(e) => setCallbackAt(e.target.value)}
-                  style={{
-                    background: "#030712",
-                    border: "1px solid #374151",
-                    borderRadius: 8,
-                    color: "white",
-                    padding: "8px 10px",
-                    fontSize: 13,
-                    colorScheme: "dark",
-                  }}
-                />
-              </label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button type="button" onClick={() => setPickingCallback(false)} style={s.btn}>
-                  Back
-                </button>
-                <button
-                  type="button"
-                  disabled={!callbackAt || saving !== null}
-                  onClick={() => void saveOutcome("callback")}
-                  style={{ ...s.btn, flex: 1, background: "#2563eb", borderColor: "#2563eb", color: "white", fontWeight: 600 }}
-                >
-                  {saving ? "Saving…" : "Schedule callback"}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-              {OUTCOMES.map((o) => (
-                <button
-                  key={o.status}
-                  type="button"
-                  disabled={saving !== null}
-                  onClick={() => void saveOutcome(o.status)}
-                  style={{
-                    ...s.btn,
-                    color: o.color,
-                    padding: "9px 6px",
-                    background: suggested === o.status ? "rgba(255,255,255,0.05)" : "transparent",
-                    borderColor: suggested === o.status ? o.color : "#374151",
-                  }}
-                >
-                  {saving === o.status ? "Saving…" : o.label}
-                </button>
-              ))}
-            </div>
-          )}
-          {saveError && <p style={{ color: "#f87171", fontSize: 12, margin: "10px 0 0" }}>{saveError}</p>}
-        </div>
-      )}
-    </>
-  );
+  const value = useMemo(() => ({ open }), [open]);
 
   return (
     <LeadDialerContext.Provider value={value}>
       {children}
-      {dock
-        ? createPortal(panel, dock)
-        : lead && (
-            <>
-              <div
-                onClick={close}
-                style={{
-                  position: "fixed",
-                  inset: 0,
-                  background: "rgba(3,7,18,0.6)",
-                  zIndex: 60,
-                  transition: "opacity 150ms",
-                  opacity: visible ? 1 : 0,
-                  pointerEvents: visible ? "auto" : "none",
-                }}
-              />
-              <aside
-                role="dialog"
-                aria-label={`Call ${leadName(lead)}`}
-                aria-hidden={!visible}
-                style={{
-                  position: "fixed",
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  width: "100%",
-                  maxWidth: 380,
-                  background: "#111827",
-                  borderLeft: "1px solid #1f2937",
-                  zIndex: 61,
-                  padding: 20,
-                  overflowY: "auto",
-                  boxSizing: "border-box",
-                  transition: "transform 180ms ease-out",
-                  transform: visible ? "translateX(0)" : "translateX(100%)",
-                  visibility: visible ? "visible" : "hidden",
-                }}
-              >
-                {panel}
-              </aside>
-            </>
-          )}
+      {lead && (
+        <>
+          <div
+            onClick={close}
+            style={{ position: "fixed", inset: 0, background: "rgba(3,7,18,0.6)", zIndex: 60, transition: "opacity 150ms", opacity: visible ? 1 : 0, pointerEvents: visible ? "auto" : "none" }}
+          />
+          <aside
+            role="dialog"
+            aria-label={`Call ${leadName(lead)}`}
+            aria-hidden={!visible}
+            style={{
+              position: "fixed", top: 0, right: 0, bottom: 0, width: "100%", maxWidth: 380, background: "#111827",
+              borderLeft: "1px solid #1f2937", zIndex: 61, padding: 20, overflowY: "auto", boxSizing: "border-box",
+              transition: "transform 180ms ease-out", transform: visible ? "translateX(0)" : "translateX(100%)",
+              visibility: visible ? "visible" : "hidden",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ ...s.eyebrow, margin: "0 0 4px" }}>{lead.leadType === "individual" ? "Individual" : "Business"}</p>
+                <p style={{ color: "white", fontSize: 16, fontWeight: 800, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {leadName(lead)}
+                </p>
+              </div>
+              <button type="button" onClick={close} aria-label="Close" style={{ ...s.btn, padding: "6px 10px" }}>✕</button>
+            </div>
+
+            {phones.length > 1 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                {phones.map((p, i) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPhoneIndex(i)}
+                    style={{ ...s.btn, borderColor: i === phoneIndex ? "#34d399" : "#374151", color: i === phoneIndex ? "#34d399" : "#9ca3af" }}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Keep the Dialer mounted while hidden so the softphone stays registered. */}
+            <Dialer phoneNumber={phones[phoneIndex] ?? ""} leadName={leadName(lead)} onCallEnded={setLastCall} style={{ maxWidth: "none" }} />
+
+            <div style={{ marginTop: 16 }}>
+              <p style={{ ...s.eyebrow, margin: "0 0 8px" }}>{lastCall ? "How did it go?" : "Set outcome"}</p>
+              {pickingCallback ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <label style={{ ...s.eyebrow, display: "flex", flexDirection: "column", gap: 4 }}>
+                    Call back at
+                    <input
+                      type="datetime-local"
+                      value={callbackAt}
+                      onChange={(e) => setCallbackAt(e.target.value)}
+                      style={{ background: "#030712", border: "1px solid #374151", borderRadius: 8, color: "white", padding: "8px 10px", fontSize: 13, colorScheme: "dark" }}
+                    />
+                  </label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button type="button" onClick={() => setPickingCallback(false)} style={s.btn}>Back</button>
+                    <button
+                      type="button"
+                      disabled={!callbackAt || saving !== null}
+                      onClick={() => void saveOutcome("callback")}
+                      style={{ ...s.btn, flex: 1, background: "#2563eb", borderColor: "#2563eb", color: "white", fontWeight: 600 }}
+                    >
+                      {saving ? "Saving…" : "Schedule callback"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  {OUTCOMES.map((o) => (
+                    <button
+                      key={o.status}
+                      type="button"
+                      disabled={saving !== null}
+                      onClick={() => void saveOutcome(o.status)}
+                      style={{
+                        ...s.btn,
+                        color: o.color,
+                        padding: "9px 6px",
+                        background: suggested === o.status ? "rgba(255,255,255,0.05)" : "transparent",
+                        borderColor: suggested === o.status ? o.color : "#374151",
+                      }}
+                    >
+                      {saving === o.status ? "Saving…" : o.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {saveError && <p style={{ color: "#f87171", fontSize: 12, margin: "10px 0 0" }}>{saveError}</p>}
+            </div>
+          </aside>
+        </>
+      )}
     </LeadDialerContext.Provider>
   );
 }
@@ -280,29 +217,6 @@ export function useLeadDialer() {
   const ctx = useContext(LeadDialerContext);
   if (!ctx) throw new Error("useLeadDialer must be used inside <LeadDialerProvider>");
   return ctx;
-}
-
-/** Docks the lead dialer as a side panel on the page that renders this. Below 1100px, Call opens the drawer instead. */
-export function LeadDialerDock({ style }: { style?: React.CSSProperties }) {
-  const { setDock } = useLeadDialer();
-  const [wide, setWide] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1100px)");
-    const update = () => setWide(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-
-  if (!wide) return null;
-  return (
-    <aside
-      ref={setDock}
-      aria-label="Dialer"
-      style={{ background: "#111827", borderLeft: "1px solid #1f2937", padding: 20, overflowY: "auto", boxSizing: "border-box", ...style }}
-    />
-  );
 }
 
 /** Call button for a lead row or detail page. Stops propagation so a row's own click doesn't fire. */
