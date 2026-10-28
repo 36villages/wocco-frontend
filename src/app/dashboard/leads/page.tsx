@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { LeadCallButton } from "@/components/dialer/LeadDialer";
+import LeadsTabs from "@/components/LeadsTabs";
 
 const PAGE_SIZE = 100;
 
@@ -372,7 +373,6 @@ function LeadsPageInner() {
       <header
         style={{
           background: "#111827",
-          borderBottom: "1px solid #1f2937",
           padding: isNarrow ? "14px 16px" : "16px 24px",
           display: "flex",
           alignItems: "center",
@@ -437,6 +437,7 @@ function LeadsPageInner() {
           </button>
         </div>
       </header>
+      <LeadsTabs />
 
       {batchFilter && (
         <div

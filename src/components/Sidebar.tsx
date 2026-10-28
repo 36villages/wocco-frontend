@@ -8,7 +8,6 @@ import Logo from "@/components/Logo";
 const BASE_LINKS = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Leads", href: "/dashboard/leads" },
-  { label: "Dialer", href: "/dashboard/dialer" },
   { label: "Heat Map", href: "/dashboard/map" },
   { label: "Scraper", href: "/dashboard/scrape" },
 ];
